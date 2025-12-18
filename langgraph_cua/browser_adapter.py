@@ -103,10 +103,21 @@ class BrowserInstance:
 
         elif action == "press_key":
             if keys:
-                for key in keys:
-                    # Map Scrapybara key names to Playwright key names
-                    pw_key = self._map_key(key)
-                    self._page.keyboard.press(pw_key)
+                # Map all keys first
+                mapped_keys = [self._map_key(key) for key in keys]
+
+                # Check if this is a key combination (modifier + key)
+                modifiers = {"Control", "Shift", "Alt", "Meta"}
+                has_modifier = any(k in modifiers for k in mapped_keys)
+
+                if has_modifier and len(mapped_keys) > 1:
+                    # Press as a combination (e.g., "Control+r")
+                    combo = "+".join(mapped_keys)
+                    self._page.keyboard.press(combo)
+                else:
+                    # Press keys individually
+                    for pw_key in mapped_keys:
+                        self._page.keyboard.press(pw_key)
 
         elif action == "scroll":
             if coordinates and (delta_x is not None or delta_y is not None):
@@ -126,29 +137,68 @@ class BrowserInstance:
         return ComputerResponse(base_64_image=screenshot_base64)
 
     def _map_key(self, key: str) -> str:
-        """Map Scrapybara key names to Playwright key names."""
+        """Map Scrapybara/CUA key names to Playwright key names (Mac-friendly)."""
+        # Normalize to lowercase for matching
+        key_lower = key.lower()
         key_map = {
-            "Return": "Enter",
-            "BackSpace": "Backspace",
-            "Escape": "Escape",
-            "Tab": "Tab",
-            "Delete": "Delete",
-            "Insert": "Insert",
-            "Home": "Home",
-            "End": "End",
-            "Page_Up": "PageUp",
-            "Page_Down": "PageDown",
-            "Up": "ArrowUp",
-            "Down": "ArrowDown",
-            "Left": "ArrowLeft",
-            "Right": "ArrowRight",
-            "Meta_L": "Meta",
-            "Alt_L": "Alt",
-            "Caps_Lock": "CapsLock",
+            # Modifier keys (Mac uses Meta for Command key)
+            "ctrl": "Meta",  # Map Ctrl to Cmd on Mac
+            "control": "Meta",  # Map Ctrl to Cmd on Mac
+            "cmd": "Meta",
+            "command": "Meta",
+            "meta": "Meta",
+            "super": "Meta",
+            "win": "Meta",
+            "shift": "Shift",
+            "alt": "Alt",
+            "option": "Alt",
+            # Special keys
+            "return": "Enter",
+            "enter": "Enter",
+            "backspace": "Backspace",
+            "escape": "Escape",
+            "esc": "Escape",
+            "tab": "Tab",
+            "delete": "Delete",
+            "insert": "Insert",
+            "home": "Home",
+            "end": "End",
+            "pageup": "PageUp",
+            "page_up": "PageUp",
+            "pagedown": "PageDown",
+            "page_down": "PageDown",
+            "space": " ",
+            # Arrow keys
+            "up": "ArrowUp",
+            "down": "ArrowDown",
+            "left": "ArrowLeft",
+            "right": "ArrowRight",
+            "arrowup": "ArrowUp",
+            "arrowdown": "ArrowDown",
+            "arrowleft": "ArrowLeft",
+            "arrowright": "ArrowRight",
+            # Function keys
+            "f1": "F1",
+            "f2": "F2",
+            "f3": "F3",
+            "f4": "F4",
+            "f5": "F5",
+            "f6": "F6",
+            "f7": "F7",
+            "f8": "F8",
+            "f9": "F9",
+            "f10": "F10",
+            "f11": "F11",
+            "f12": "F12",
+            # Legacy Scrapybara mappings
+            "meta_l": "Meta",
+            "alt_l": "Alt",
+            "caps_lock": "CapsLock",
+            "capslock": "CapsLock",
             "slash": "/",
             "backslash": "\\",
         }
-        return key_map.get(key, key)
+        return key_map.get(key_lower, key)
 
     def get_stream_url(self) -> StreamUrlResponse:
         """

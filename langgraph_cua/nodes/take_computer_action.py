@@ -158,9 +158,31 @@ def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, A
     except Exception as e:
         print(f"\n\nFailed to execute computer call: {e}\n\n")
         print(f"Computer call details: {output}\n\n")
+        # On error, take a screenshot anyway and return it
+        try:
+            error_screenshot = instance.computer(action="take_screenshot")
+            tool_message = {
+                "role": "tool",
+                "content": [
+                    {
+                        "type": "input_image",
+                        "image_url": f"data:image/png;base64,{error_screenshot.base_64_image}",
+                    }
+                ],
+                "tool_call_id": output.get("call_id"),
+                "additional_kwargs": {"type": "computer_call_output", "error": str(e)},
+            }
+        except Exception:
+            # If even screenshot fails, return a text error message
+            tool_message = {
+                "role": "tool",
+                "content": f"Error executing action: {e}",
+                "tool_call_id": output.get("call_id"),
+                "additional_kwargs": {"type": "computer_call_output", "error": str(e)},
+            }
 
     return {
-        "messages": tool_message if tool_message else None,
+        "messages": tool_message,
         "instance_id": instance.id,
         "stream_url": stream_url,
         "authenticated_id": authenticated_id,
