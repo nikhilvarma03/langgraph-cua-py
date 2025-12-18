@@ -192,5 +192,16 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
+    import signal
 
-    asyncio.run(main())
+    # Handle Ctrl+C gracefully
+    def handle_interrupt(signum, frame):
+        print("\n\nInterrupt received, generating report...")
+        raise KeyboardInterrupt()
+
+    signal.signal(signal.SIGINT, handle_interrupt)
+
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("\nScript interrupted.")
