@@ -5,14 +5,14 @@ from langchain_core.messages import AnyMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.config import get_stream_writer
 from openai.types.responses.response_computer_tool_call import ResponseComputerToolCall
-from scrapybara.types import ComputerResponse, InstanceGetStreamUrlResponse
 
+from ..browser_adapter import ComputerResponse, StreamUrlResponse
 from ..types import CUAState, get_configuration_with_defaults
 from ..utils import get_instance, is_computer_tool_call
 
 # Copied from the OpenAI example repository
 # https://github.com/openai/openai-cua-sample-app/blob/eb2d58ba77ffd3206d3346d6357093647d29d99c/computers/scrapybara.py#L10
-CUA_KEY_TO_SCRAPYBARA_KEY = {
+CUA_KEY_TO_BROWSER_KEY = {
     "/": "slash",
     "\\": "backslash",
     "arrowdown": "Down",
@@ -83,7 +83,7 @@ def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, A
     if not stream_url:
         # If the stream_url is not yet defined in state, fetch it, then write to the custom stream
         # so that it's made accessible to the client (or whatever is reading the stream) before any actions are taken.
-        stream_url_response: InstanceGetStreamUrlResponse = instance.get_stream_url()
+        stream_url_response: StreamUrlResponse = instance.get_stream_url()
         stream_url = stream_url_response.stream_url
 
         writer = get_stream_writer()
@@ -117,7 +117,7 @@ def take_computer_action(state: CUAState, config: RunnableConfig) -> Dict[str, A
             )
         elif action_type == "keypress":
             mapped_keys = [
-                CUA_KEY_TO_SCRAPYBARA_KEY.get(key.lower(), key.lower())
+                CUA_KEY_TO_BROWSER_KEY.get(key.lower(), key.lower())
                 for key in action.get("keys")
             ]
             computer_response = instance.computer(action="press_key", keys=mapped_keys)

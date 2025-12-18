@@ -1,47 +1,38 @@
-from typing import Any, Union
+from typing import Any
 
 from langchain_core.runnables import RunnableConfig
-from scrapybara import Scrapybara
-from scrapybara.client import BrowserInstance, UbuntuInstance, WindowsInstance
 
+from .browser_adapter import BrowserInstance, PlaywrightClient, get_playwright_client
 from .types import get_configuration_with_defaults
 
 
-def get_scrapybara_client(api_key: str) -> Scrapybara:
+def get_browser_client(headless: bool = False) -> PlaywrightClient:
     """
-    Gets the Scrapybara client, using the API key provided.
+    Gets the Playwright browser client.
 
     Args:
-        api_key: The API key for Scrapybara.
+        headless: Whether to run the browser in headless mode.
 
     Returns:
-        The Scrapybara client.
+        The PlaywrightClient instance.
     """
-    if not api_key:
-        raise ValueError(
-            "Scrapybara API key not provided. Please provide one in the configurable fields, "
-            "or set it as an environment variable (SCRAPYBARA_API_KEY)"
-        )
-    client = Scrapybara(api_key=api_key)
-    return client
+    return get_playwright_client(headless=headless)
 
 
-def get_instance(
-    id: str, config: RunnableConfig
-) -> Union[UbuntuInstance, BrowserInstance, WindowsInstance]:
+def get_instance(id: str, config: RunnableConfig) -> BrowserInstance:
     """
-    Gets an instance by its ID from Scrapybara.
+    Gets a browser instance by its ID.
 
     Args:
         id: The ID of the instance to get.
         config: The configuration for the runnable.
 
     Returns:
-        The instance.
+        The browser instance.
     """
     configuration = get_configuration_with_defaults(config)
-    scrapybara_api_key = configuration.get("scrapybara_api_key")
-    client = get_scrapybara_client(scrapybara_api_key)
+    headless = configuration.get("headless", False)
+    client = get_browser_client(headless=headless)
     return client.get(id)
 
 

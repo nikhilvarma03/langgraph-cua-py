@@ -1,8 +1,8 @@
 from langchain_core.runnables.config import RunnableConfig
-from scrapybara.client import BrowserInstance, UbuntuInstance, WindowsInstance
 
+from ..browser_adapter import BrowserInstance
 from ..types import CUAState
-from ..utils import get_configuration_with_defaults, get_scrapybara_client
+from ..utils import get_browser_client, get_configuration_with_defaults
 
 # Copied from the OpenAI example repository
 # https://github.com/openai/openai-cua-sample-app/blob/eb2d58ba77ffd3206d3346d6357093647d29d99c/utils.py#L13
@@ -19,28 +19,30 @@ BLOCKED_DOMAINS = [
 def create_vm_instance(state: CUAState, config: RunnableConfig):
     instance_id = state.get("instance_id")
     configuration = get_configuration_with_defaults(config)
-    scrapybara_api_key = configuration.get("scrapybara_api_key")
     timeout_hours = configuration.get("timeout_hours")
     environment = configuration.get("environment")
+    headless = configuration.get("headless", False)
 
     if instance_id is not None:
         # If the instance_id already exists in state, do nothing.
         return {}
 
-    if not scrapybara_api_key:
-        raise ValueError(
-            "Scrapybara API key not provided. Please provide one in the configurable fields, "
-            "or set it as an environment variable (SCRAPYBARA_API_KEY)"
-        )
+    client = get_browser_client(headless=headless)
 
-    client = get_scrapybara_client(scrapybara_api_key)
-
-    instance: UbuntuInstance | BrowserInstance | WindowsInstance
+    instance: BrowserInstance
 
     if environment == "ubuntu":
-        instance = client.start_ubuntu(timeout_hours=timeout_hours)
+        # Ubuntu VM not supported with free Playwright adapter
+        raise NotImplementedError(
+            "Ubuntu VM instances are not supported with the free Playwright adapter. "
+            "Use environment='web' for browser-only automation."
+        )
     elif environment == "windows":
-        instance = client.start_windows(timeout_hours=timeout_hours)
+        # Windows VM not supported with free Playwright adapter
+        raise NotImplementedError(
+            "Windows VM instances are not supported with the free Playwright adapter. "
+            "Use environment='web' for browser-only automation."
+        )
     elif environment == "web":
         blocked_domains = [
             domain.replace("https://", "").replace("www.", "") for domain in BLOCKED_DOMAINS
@@ -50,7 +52,7 @@ def create_vm_instance(state: CUAState, config: RunnableConfig):
         )
     else:
         raise ValueError(
-            f"Invalid environment. Must be one of 'web', 'ubuntu', or 'windows'. Received: {environment}"
+            f"Invalid environment. Must be 'web' for browser automation. Received: {environment}"
         )
 
     stream_url = instance.get_stream_url().stream_url

@@ -64,28 +64,28 @@ class CUAConfiguration(TypedDict):
     """Configuration for the Computer Use Agent.
 
     Attributes:
-        scrapybara_api_key: The API key to use for Scrapybara.
-            This can be provided in the configuration, or set as an environment variable (SCRAPYBARA_API_KEY).
-        timeout_hours: The number of hours to keep the virtual machine running before it times out.
+        headless: Whether to run the browser in headless mode (no visible window).
+            Default is False (browser window will be visible).
+        timeout_hours: The number of hours to keep the browser session running before it times out.
             Must be between 0.01 and 24. Default is 1.
         zdr_enabled: Whether or not Zero Data Retention is enabled in the user's OpenAI account. If True,
             the agent will not pass the 'previous_response_id' to the model, and will always pass it the full
             message history for each request. If False, the agent will pass the 'previous_response_id' to the
             model, and only the latest message in the history will be passed. Default False.
         auth_state_id: The ID of the authentication state. If defined, it will be used to authenticate
-            with Scrapybara. Only applies if 'environment' is set to 'web'.
-        environment: The environment to use. Default is "web".
+            with the browser. Only applies if 'environment' is set to 'web'.
+        environment: The environment to use. Only "web" is supported with the free Playwright adapter.
         prompt: The initial prompt to use for the conversation. Will
             be passed as a system message
     """
 
-    scrapybara_api_key: Optional[str]  # API key for Scrapybara
+    headless: Optional[bool]  # Whether to run browser in headless mode (default: False)
     timeout_hours: Optional[float]  # Timeout in hours (0.01-24, default: 1)
     zdr_enabled: Optional[bool]  # True/False for whether or not ZDR is enabled.
     auth_state_id: Optional[str]  # The ID of the authentication state.
     environment: Optional[
-        Literal["web", "ubuntu", "windows"]
-    ]  # The environment to use. Default is "web".
+        Literal["web"]
+    ]  # The environment to use. Only "web" is supported with free adapter.
     prompt: Optional[Union[str, SystemMessage]]  # The initial prompt to use for the conversation
 
 
@@ -101,11 +101,7 @@ def get_configuration_with_defaults(config: RunnableConfig) -> Dict[str, Any]:
     """
 
     configurable_fields = config.get("configurable", {})
-    scrapybara_api_key = (
-        configurable_fields.get("scrapybara_api_key")
-        or config.get("scrapybara_api_key")
-        or os.environ.get("SCRAPYBARA_API_KEY")
-    )
+    headless = configurable_fields.get("headless", False)
     timeout_hours = configurable_fields.get("timeout_hours", 1)
     zdr_enabled = configurable_fields.get("zdr_enabled", False)
     auth_state_id = configurable_fields.get("auth_state_id", None)
@@ -113,7 +109,7 @@ def get_configuration_with_defaults(config: RunnableConfig) -> Dict[str, Any]:
     prompt = configurable_fields.get("prompt", None)
 
     return {
-        "scrapybara_api_key": scrapybara_api_key,
+        "headless": headless,
         "timeout_hours": timeout_hours,
         "zdr_enabled": zdr_enabled,
         "auth_state_id": auth_state_id,
