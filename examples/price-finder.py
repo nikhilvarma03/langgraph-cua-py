@@ -18,6 +18,67 @@ from langgraph_cua.report import CUAReportGenerator
 # Load environment variables from .env file
 load_dotenv()
 
+
+def print_clean_update(update):
+    """Print a clean, readable summary of the update without base64 image data."""
+    if isinstance(update, tuple) and len(update) == 2:
+        path, data = update
+        path_str = " > ".join(str(p) for p in path) if path else "root"
+    else:
+        path_str = "root"
+        data = update
+
+    if not isinstance(data, dict):
+        return
+
+    for node_name, node_data in data.items():
+        print(f"\n[{path_str}] {node_name}")
+
+        if node_name == "process_input":
+            route = node_data.get("route", "unknown")
+            print(f"  → Routing to: {route}")
+
+        elif node_name == "create_vm_instance":
+            instance_id = node_data.get("instance_id", "")[:8] + "..." if node_data.get("instance_id") else "N/A"
+            print(f"  → Browser instance created: {instance_id}")
+
+        elif node_name == "call_model":
+            messages = node_data.get("messages", {})
+            if hasattr(messages, "additional_kwargs"):
+                tool_outputs = messages.additional_kwargs.get("tool_outputs", [])
+                for output in tool_outputs:
+                    if output.get("type") == "computer_call":
+                        action = output.get("action", {})
+                        action_type = action.get("type", "unknown")
+                        details = ""
+                        if action_type == "click":
+                            details = f" at ({action.get('x')}, {action.get('y')})"
+                        elif action_type == "type":
+                            text = action.get("text", "")[:30]
+                            details = f' "{text}..."' if len(action.get("text", "")) > 30 else f' "{text}"'
+                        elif action_type == "scroll":
+                            details = f" by ({action.get('scroll_x')}, {action.get('scroll_y')})"
+                        print(f"  → AI requests: {action_type}{details}")
+            elif hasattr(messages, "content"):
+                content = messages.content
+                if isinstance(content, list) and content:
+                    for item in content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            text = item.get("text", "")[:100]
+                            print(f"  → AI says: {text}...")
+                elif isinstance(content, str) and content:
+                    print(f"  → AI says: {content[:100]}...")
+
+        elif node_name == "take_computer_action":
+            error = node_data.get("messages", {}).get("additional_kwargs", {}).get("error")
+            if error:
+                print(f"  → Action failed: {error[:50]}...")
+            else:
+                print(f"  → Action completed ✓ (screenshot captured)")
+
+        elif node_name == "respond":
+            print(f"  → Generating response...")
+
 # Create the Computer Use Agent (CUA) graph
 cua_graph = create_cua()
 
@@ -158,8 +219,9 @@ async def main():
     # Process and display the stream updates
     try:
         async for update in stream:
-            print(f"\n----\nUPDATE: {update}\n----\n")
             all_updates.append(update)
+            # Print a cleaner summary instead of raw data
+            print_clean_update(update)
     except KeyboardInterrupt:
         print("\n\nTask interrupted by user.")
     except Exception as e:
