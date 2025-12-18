@@ -261,7 +261,8 @@ class PlaywrightClient:
             context.route("**/*", should_abort)
 
         page = context.new_page()
-        page.goto("about:blank")
+        # Start at Google so the AI can immediately search
+        page.goto("https://www.google.com", wait_until="domcontentloaded")
 
         instance_id = str(uuid.uuid4())
         instance = BrowserInstance(

@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from langgraph_cua import create_cua
 from langgraph_cua.types import CUAState
+from langgraph_cua.report import CUAReportGenerator
 
 # Load environment variables from .env file
 load_dotenv()
@@ -147,15 +148,46 @@ async def main():
         },
     ]
 
+    # Collect all updates for report generation
+    all_updates = []
+
     # Stream the graph execution with updates visible
     stream = graph.astream({"messages": messages}, subgraphs=True, stream_mode="updates")
     print("Stream started")
 
     # Process and display the stream updates
-    async for update in stream:
-        print(f"\n----\nUPDATE: {update}\n----\n")
+    try:
+        async for update in stream:
+            print(f"\n----\nUPDATE: {update}\n----\n")
+            all_updates.append(update)
+    except KeyboardInterrupt:
+        print("\n\nTask interrupted by user.")
+    except Exception as e:
+        print(f"\n\nTask ended with error: {e}")
 
-    print("Done")
+    # Generate and display the analysis report
+    print("\n" + "=" * 60)
+    print("Generating Analysis Report...")
+    print("=" * 60)
+
+    report = CUAReportGenerator.from_stream_updates(all_updates)
+
+    # Print summary to console
+    report.print_summary()
+
+    # Save detailed markdown report
+    report_path = "cua_report.md"
+    with open(report_path, "w") as f:
+        f.write(report.to_markdown())
+    print(f"Detailed report saved to: {report_path}")
+
+    # Also save JSON report
+    json_report_path = "cua_report.json"
+    with open(json_report_path, "w") as f:
+        f.write(report.to_json())
+    print(f"JSON report saved to: {json_report_path}")
+
+    print("\nDone")
 
 
 if __name__ == "__main__":
